@@ -1,13 +1,13 @@
 import hmac
 import os
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Security, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from coros_mcp.server import (
     list_activities,
@@ -81,6 +81,41 @@ class RemoveWorkoutRequest(BaseModel):
     )
 
 
+class TodayResponse(BaseModel):
+    day: str
+    completed: Any
+    planned: Any
+
+
+class CalendarResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    schedule: Any | None = None
+    count: int | None = None
+    date_range: str | None = None
+    error: str | None = None
+
+
+class ScheduleResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    scheduled: bool | None = None
+    name: str | None = None
+    happen_day: str | None = None
+    total_minutes: float | None = None
+    response: Any | None = None
+    warning: str | None = None
+
+
+class RemoveResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    removed: bool | None = None
+    plan_id: str | None = None
+    id_in_plan: str | None = None
+    error: str | None = None
+
+
 SPORT_IDS = {
     "indoor_cycling": 2,
     "road_cycling": 200,
@@ -106,27 +141,43 @@ async def privacy() -> str:
     return """<!doctype html><html lang=\"es\"><meta name=\"viewport\" content=\"width=device-width\"><title>Privacidad</title><body style=\"font:17px system-ui;max-width:42rem;margin:4rem auto;padding:0 1rem\"><h1>Privacidad</h1><p>Servicio personal y privado. Procesa únicamente los datos necesarios para consultar y modificar la cuenta COROS de su propietario. No vende, comparte ni conserva conversaciones de ChatGPT. Las credenciales se almacenan como secretos del proveedor de alojamiento y no se incluyen en el código fuente.</p></body></html>"""
 
 
-@app.get("/api/today", operation_id="getTodayCorosSummary")
-async def get_today(_: Private) -> dict:
+@app.get(
+    "/api/today",
+    operation_id="getTodayCorosSummary",
+    response_model=TodayResponse,
+)
+async def get_today(_: Private) -> TodayResponse:
     """Return today's completed activities and scheduled workouts in COROS."""
     day = datetime.now(MADRID).strftime("%Y%m%d")
     completed = await list_activities(day, day, page=1, size=100)
     planned = await list_planned_activities(day, day)
-    return {"day": day, "completed": completed, "planned": planned}
+    return TodayResponse(day=day, completed=completed, planned=planned)
 
 
-@app.get("/api/calendar", operation_id="getCorosCalendar")
+@app.get(
+    "/api/calendar",
+    operation_id="getCorosCalendar",
+    response_model=CalendarResponse,
+)
 async def get_calendar(
     _: Private,
     start_day: Annotated[str, Query(pattern=r"^\d{8}$")],
     end_day: Annotated[str, Query(pattern=r"^\d{8}$")],
-) -> dict:
+) -> CalendarResponse:
     """Return scheduled COROS workouts for an inclusive date range."""
-    return await list_planned_activities(start_day, end_day)
+    return CalendarResponse.model_validate(
+        await list_planned_activities(start_day, end_day)
+    )
 
 
-@app.post("/api/workouts/schedule", operation_id="scheduleStructuredCorosWorkout")
-async def create_scheduled_workout(payload: ScheduleWorkoutRequest, _: Private) -> dict:
+@app.post(
+    "/api/workouts/schedule",
+    operation_id="scheduleStructuredCorosWorkout",
+    response_model=ScheduleResponse,
+)
+async def create_scheduled_workout(
+    payload: ScheduleWorkoutRequest, _: Private
+) -> ScheduleResponse:
     """Create one structured workout directly on a specific COROS calendar day."""
     if not payload.confirmed:
         raise HTTPException(409, "User confirmation is required before scheduling")
@@ -139,11 +190,17 @@ async def create_scheduled_workout(payload: ScheduleWorkoutRequest, _: Private) 
     )
     if result.get("error"):
         raise HTTPException(502, result["error"])
-    return result
+    return ScheduleResponse.model_validate(result)
 
 
-@app.post("/api/workouts/remove", operation_id="removeExactCorosWorkout")
-async def remove_exact_workout(payload: RemoveWorkoutRequest, _: Private) -> dict:
+@app.post(
+    "/api/workouts/remove",
+    operation_id="removeExactCorosWorkout",
+    response_model=RemoveResponse,
+)
+async def remove_exact_workout(
+    payload: RemoveWorkoutRequest, _: Private
+) -> RemoveResponse:
     """Remove one exact workout using identifiers returned by a calendar query."""
     if not payload.confirmed:
         raise HTTPException(409, "Explicit user confirmation is required before deletion")
@@ -154,7 +211,7 @@ async def remove_exact_workout(payload: RemoveWorkoutRequest, _: Private) -> dic
     )
     if result.get("error"):
         raise HTTPException(502, result["error"])
-    return result
+    return RemoveResponse.model_validate(result)
 
 
 if __name__ == "__main__":
