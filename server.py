@@ -20,6 +20,7 @@ app = FastAPI(
     title="David COROS Actions",
     description="Private API used by David's ChatGPT GPT to manage COROS workouts.",
     version="1.0.0",
+    servers=[{"url": "https://coros-remote-mcp-probe.onrender.com"}],
 )
 bearer = HTTPBearer(auto_error=False)
 MADRID = ZoneInfo("Europe/Madrid")
