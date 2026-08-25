@@ -1,1 +1,3 @@
-fastmcp==3.4.7
+fastapi==0.117.1
+uvicorn==0.37.0
+coros-mcp @ git+https://github.com/cygnusb/coros-mcp.git@main
