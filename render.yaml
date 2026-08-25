@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: coros-remote-probe
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /mcp
+    autoDeployTrigger: commit
