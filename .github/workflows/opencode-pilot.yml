@@ -33,9 +33,10 @@ jobs:
             Do not modify files, create branches, commits, issues, or pull requests.
             Report the repository purpose, main files, and one safe improvement suggestion.
 
-      - name: Fallback - Groq GPT-OSS 120B
+      - name: Fallback 1 - Groq GPT-OSS 120B
         id: groq
         if: steps.gemini.outcome == 'failure'
+        continue-on-error: true
         uses: anomalyco/opencode/github@latest
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -46,7 +47,25 @@ jobs:
           share: false
           prompt: |
             This is an IA DEV infrastructure pilot.
-            The primary model failed, so you are the automatic fallback.
+            The primary model failed, so you are the first automatic fallback.
+            Inspect this repository in read-only fashion.
+            Do not modify files, create branches, commits, issues, or pull requests.
+            Report the repository purpose, main files, and one safe improvement suggestion.
+
+      - name: Fallback 2 - OpenRouter Free
+        id: openrouter
+        if: steps.gemini.outcome == 'failure' && steps.groq.outcome == 'failure'
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: openrouter/openrouter/free
+          use_github_token: true
+          share: false
+          prompt: |
+            This is an IA DEV infrastructure pilot.
+            Gemini and Groq failed, so you are the second automatic fallback.
             Inspect this repository in read-only fashion.
             Do not modify files, create branches, commits, issues, or pull requests.
             Report the repository purpose, main files, and one safe improvement suggestion.
