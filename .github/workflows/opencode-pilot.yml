@@ -2,6 +2,12 @@ name: OpenCode Pilot
 
 on:
   workflow_dispatch:
+    inputs:
+      test_openrouter:
+        description: "Force OpenRouter fallback test"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   opencode-pilot:
@@ -18,6 +24,7 @@ jobs:
 
       - name: Primary - Gemini
         id: gemini
+        if: ${{ !inputs.test_openrouter }}
         continue-on-error: true
         uses: anomalyco/opencode/github@latest
         env:
@@ -28,14 +35,16 @@ jobs:
           use_github_token: true
           share: false
           prompt: |
-            This is an IA DEV infrastructure pilot.
-            Inspect this repository in read-only fashion.
-            Do not modify files, create branches, commits, issues, or pull requests.
-            Report the repository purpose, main files, and one safe improvement suggestion.
+            IA DEV read-only health check.
+            Read README.md only.
+            Return exactly three short lines:
+            PURPOSE: <repository purpose>
+            FILE: README.md
+            STATUS: OK
 
       - name: Fallback 1 - Groq GPT-OSS 120B
         id: groq
-        if: steps.gemini.outcome == 'failure'
+        if: ${{ !inputs.test_openrouter && steps.gemini.outcome == 'failure' }}
         continue-on-error: true
         uses: anomalyco/opencode/github@latest
         env:
@@ -46,15 +55,16 @@ jobs:
           use_github_token: true
           share: false
           prompt: |
-            This is an IA DEV infrastructure pilot.
-            The primary model failed, so you are the first automatic fallback.
-            Inspect this repository in read-only fashion.
-            Do not modify files, create branches, commits, issues, or pull requests.
-            Report the repository purpose, main files, and one safe improvement suggestion.
+            IA DEV read-only health check.
+            Read README.md only. Do not inspect images, attachments, git history, or other files.
+            Return exactly three short lines:
+            PURPOSE: <repository purpose>
+            FILE: README.md
+            STATUS: OK
 
       - name: Fallback 2 - OpenRouter Free
         id: openrouter
-        if: steps.gemini.outcome == 'failure' && steps.groq.outcome == 'failure'
+        if: ${{ inputs.test_openrouter || (steps.gemini.outcome == 'failure' && steps.groq.outcome == 'failure') }}
         uses: anomalyco/opencode/github@latest
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -64,8 +74,9 @@ jobs:
           use_github_token: true
           share: false
           prompt: |
-            This is an IA DEV infrastructure pilot.
-            Gemini and Groq failed, so you are the second automatic fallback.
-            Inspect this repository in read-only fashion.
-            Do not modify files, create branches, commits, issues, or pull requests.
-            Report the repository purpose, main files, and one safe improvement suggestion.
+            IA DEV read-only health check.
+            Read README.md only.
+            Return exactly three short lines:
+            PURPOSE: <repository purpose>
+            FILE: README.md
+            STATUS: OK
