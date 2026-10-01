@@ -1,0 +1,34 @@
+name: OpenCode Pilot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  opencode-pilot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@latest
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: google/gemini-2.5-flash
+          use_github_token: true
+          share: false
+          prompt: |
+            This is an IA DEV infrastructure pilot.
+            Inspect this repository in read-only fashion.
+            Do not modify files, create branches, commits, issues, or pull requests.
+            Report the repository purpose, main files, and one safe improvement suggestion.
