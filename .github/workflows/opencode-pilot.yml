@@ -24,7 +24,7 @@ jobs:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: google/gemini-2.5-flash
+          model: google/gemini-3.8-flash
           use_github_token: true
           share: false
           prompt: |
