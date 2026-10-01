@@ -7,9 +7,7 @@ jobs:
   opencode-pilot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -18,7 +16,26 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Run OpenCode
+      - name: Primary - Gemini
+        id: gemini
+        continue-on-error: true
+        uses: anomalyco/opencode/github@latest
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: google/gemini-3.8-flash
+          use_github_token: true
+          share: false
+          prompt: |
+            This is an IA DEV infrastructure pilot.
+            Inspect this repository in read-only fashion.
+            Do not modify files, create branches, commits, issues, or pull requests.
+            Report the repository purpose, main files, and one safe improvement suggestion.
+
+      - name: Fallback - Groq GPT-OSS 120B
+        id: groq
+        if: steps.gemini.outcome == 'failure'
         uses: anomalyco/opencode/github@latest
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -29,6 +46,7 @@ jobs:
           share: false
           prompt: |
             This is an IA DEV infrastructure pilot.
+            The primary model failed, so you are the automatic fallback.
             Inspect this repository in read-only fashion.
             Do not modify files, create branches, commits, issues, or pull requests.
             Report the repository purpose, main files, and one safe improvement suggestion.
